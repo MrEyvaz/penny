@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Penny</title>
+<style>
+:root{--purple:#5a287d;--purple2:#3c1053;--bg:#f4f1f8;--card:#fff;--text:#1d1d1f;--muted:#6b6b76;--green:#1f9d55;--amber:#e6a100;--red:#d93025;--line:#e4dfec}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--purple2);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+header h1{margin:0;font-size:22px;letter-spacing:.5px}
+header h1 span{opacity:.75;font-weight:400;font-size:14px;margin-left:6px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+.card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(60,16,83,.07)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer;color:var(--text)}
+.pill.on{background:var(--purple);border-color:var(--purple);color:#fff}
+header .pill{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+header .pill.on{background:#fff;color:var(--purple2)}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 8px}
+.status{display:flex;align-items:center;gap:16px}
+.dot{width:86px;height:86px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;transition:background .4s}
+.headline{font-size:20px;font-weight:650;line-height:1.3;margin:0}
+.sub{color:var(--muted);font-size:14px;margin:6px 0 0}
+.btn{border:0;border-radius:14px;padding:14px 18px;font-size:16px;font-weight:600;cursor:pointer;width:100%}
+.btn.main{background:var(--purple);color:#fff}
+.btn.ghost{background:#efe8f6;color:var(--purple2)}
+.mic{width:96px;height:96px;border-radius:50%;border:0;background:var(--purple);color:#fff;font-size:38px;cursor:pointer;display:block;margin:6px auto 10px;box-shadow:0 6px 18px rgba(90,40,125,.35)}
+.mic.listening{background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.msg{background:#f7f3fb;border-radius:14px;padding:14px;font-size:15px;line-height:1.5;margin:10px 0}
+canvas{width:100%;height:190px;display:block}
+.step{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .25s}
+.step.done{background:#e9f7ef;border-color:var(--green)}
+.check{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-weight:700;color:#fff}
+.step.done .check{background:var(--green);border-color:var(--green)}
+.step b{display:block;font-size:15px}
+.step small{color:var(--muted)}
+.save{margin-left:auto;font-weight:700;color:var(--green);white-space:nowrap}
+.ask{display:flex;gap:8px;margin-top:8px}
+.ask input{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:15px}
+.ask button{border:0;border-radius:12px;background:var(--purple);color:#fff;padding:0 16px;font-weight:600;cursor:pointer}
+details{font-size:14px;color:var(--muted)}
+details input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:6px;font-size:14px}
+.err{color:var(--red);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Penny <span>your money coach</span></h1>
+  <div class="row" id="langs"></div>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <p class="label" id="t-who">Who is Penny helping?</p>
+    <div class="row" id="personas"></div>
+  </div>
+
+  <div class="card">
+    <div class="status">
+      <div class="dot" id="dot"></div>
+      <div>
+        <p class="headline" id="headline"></p>
+        <p class="sub" id="subline"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="label" id="t-msg">Penny's message for you</p>
+    <div class="row" id="tones" style="margin-bottom:10px"></div>
+    <div class="msg" id="message"></div>
+    <button class="btn main" id="play">▶ Play Penny's message</button>
+  </div>
+
+  <div class="card">
+    <p class="label" id="t-future">Your next weeks</p>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="card">
+    <p class="label" id="t-plan">Penny's plan</p>
+    <div id="steps"></div>
+  </div>
+
+  <div class="card">
+    <p class="label" id="t-talk">Talk to Penny</p>
+    <button class="mic" id="mic" title="Talk to Penny">🎤</button>
+    <div class="ask">
+      <input id="askInput" placeholder="Can I afford £30 on Saturday?">
+      <button id="askBtn">Ask</button>
+    </div>
+    <div class="msg" id="answer" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>Voice settings (ElevenLabs)</summary>
+      <input id="elKey" type="password" placeholder="ElevenLabs API key (demo only, stays in this page)">
+      <input id="elVoice" placeholder="Voice ID (Gentle, default)">
+      <input id="elVoiceDirect" placeholder="Voice ID for Direct (optional)">
+      <input id="elVoiceAunty" placeholder="Voice ID for Strict Aunty (optional)">
+      <p>Without a key, Penny uses the browser's built-in voice. Empty tone fields use the default voice.</p>
+      <p class="err" id="elErr"></p>
+    </details>
+  </div>
+
+</div>
+
+<script>
+// ---------- DATA ----------
+const PERSONAS = {
+  student: {
+    name: "Aisha", en: "🎓 Student", az: "🎓 Tələbə",
+    balance: 640, daily: 20, horizon: 30,
+    endEn: "your next loan payment", endAz: "növbəti kredit ödənişinə",
+    events: [
+      {id:"phone", day:5, amount:-20, en:"phone bill", az:"telefon hesabı"},
+      {id:"netflix", day:8, amount:-12, en:"Netflix", az:"Netflix"},
+      {id:"pay1", day:10, amount:120, en:"shift pay", az:"növbə maaşı"},
+      {id:"rent", day:15, amount:-300, en:"rent instalment", az:"kirayə ödənişi"},
+      {id:"pay2", day:17, amount:80, en:"shift pay", az:"növbə maaşı"},
+      {id:"books", day:20, amount:-45, en:"course books", az:"dərs kitabları"},
+      {id:"pay3", day:24, amount:60, en:"shift pay", az:"növbə maaşı"}
+    ],
+    steps: [
+      {en:"Pause Netflix this month", az:"Bu ay Netflix-i dayandır", saveEn:"£12", mod:p=>{p.events=p.events.filter(e=>e.id!=="netflix")}},
+      {en:"Cook at home 3 more times a week", az:"Həftədə 3 dəfə çox evdə bişir", saveEn:"£90", mod:p=>{p.daily-=3}},
+      {en:"Take one extra shift next week", az:"Gələn həftə bir əlavə növbə götür", saveEn:"+£45", mod:p=>{p.events.push({id:"extra",day:12,amount:45,en:"extra shift",az:"əlavə növbə"})}}
+    ]
+  },
+  worker: {
+    name: "Marek", en: "🏭 Shift worker", az: "🏭 Növbəli işçi",
+    balance: 210, daily: 14, horizon: 21,
+    endEn: "the end of the month", endAz: "ayın sonuna",
+    events: [
+      {id:"pay1", day:2, amount:280, en:"weekly pay", az:"həftəlik maaş"},
+      {id:"rent", day:6, amount:-600, en:"rent", az:"kirayə"},
+      {id:"pay2", day:9, amount:190, en:"weekly pay (fewer shifts)", az:"həftəlik maaş (az növbə)"},
+      {id:"energy", day:12, amount:-85, en:"energy bill", az:"enerji hesabı"},
+      {id:"gym", day:14, amount:-25, en:"gym membership", az:"idman zalı"},
+      {id:"pay3", day:16, amount:240, en:"weekly pay", az:"həftəlik maaş"},
+      {id:"phone", day:18, amount:-25, en:"phone bill", az:"telefon hesabı"}
+    ],
+    steps: [
+      {en:"Freeze the gym this month", az:"Bu ay idman zalını dondur", saveEn:"£25", mod:p=>{p.events=p.events.filter(e=>e.id!=="gym")}},
+      {en:"Ask to split the energy bill", az:"Enerji hesabını hissələrə böl", saveEn:"£30", mod:p=>{p.events.forEach(e=>{if(e.id==="energy")e.amount=-55})}},
+      {en:"Bring lunch to work", az:"İşə nahar apar", saveEn:"£63", mod:p=>{p.daily-=3}}
+    ]
+  },
+  pensioner: {
+    name: "Margaret", en: "👵 Pensioner", az: "👵 Pensiyaçı",
+    balance: 420, daily: 12, horizon: 30,
+    endEn: "your next pension", endAz: "növbəti pensiyaya",
+    events: [
+      {id:"council", day:1, amount:-110, en:"council tax", az:"bələdiyyə vergisi"},
+      {id:"gas", day:8, amount:-140, en:"winter gas bill", az:"qış qaz hesabı"},
+      {id:"gift", day:12, amount:-50, en:"grandson's birthday gift", az:"nəvənin ad günü hədiyyəsi"},
+      {id:"tv", day:15, amount:-45, en:"TV and broadband", az:"TV və internet"},
+      {id:"pension", day:20, amount:720, en:"pension", az:"pensiya"}
+    ],
+    steps: [
+      {en:"Spread the gas bill monthly", az:"Qaz hesabını aylıq hissələrə böl", saveEn:"£90", mod:p=>{p.events.forEach(e=>{if(e.id==="gas")e.amount=-50})}},
+      {en:"A smaller gift, a bigger card", az:"Daha kiçik hədiyyə, daha böyük kart", saveEn:"£25", mod:p=>{p.events.forEach(e=>{if(e.id==="gift")e.amount=-25})}},
+      {en:"Shop with a list, £3 less a day", az:"Siyahı ilə alış-veriş, gündə £3 az", saveEn:"£57", mod:p=>{p.daily-=3}}
+    ]
+  }
+};
+
+const UI = {
+  en: {who:"Who is Penny helping?", msg:"Penny's message for you", future:"Your next weeks", plan:"Penny's plan", talk:"Talk to Penny",
+       play:"▶ Play Penny's message", ask:"Ask", ph:"Can I afford £30 on Saturday?",
+       safe:"Safe", tight:"Tight", danger:"Danger",
+       hSafe:(m,d)=>`You're safe. Lowest point: £${m} on ${d}.`,
+       hTight:(m,d)=>`It's tight: only £${m} left on ${d}.`,
+       hDanger:(s,d)=>`You'll be £${s} short on ${d}.`,
+       sub:end=>`Forecast until ${end}`,
+       tones:{gentle:"🤗 Gentle", direct:"💼 Direct", aunty:"👵 Strict Aunty"}},
+  az: {who:"Penny kimə kömək edir?", msg:"Penny-nin sənə mesajı", future:"Növbəti həftələrin", plan:"Penny-nin planı", talk:"Penny ilə danış",
+       play:"▶ Penny-nin mesajını dinlə", ask:"Soruş", ph:"Şənbə günü £30 xərcləyə bilərəm?",
+       safe:"Təhlükəsiz", tight:"Gərgin", danger:"Təhlükə",
+       hSafe:(m,d)=>`Təhlükəsizsən. Ən aşağı nöqtə: ${d}, £${m}.`,
+       hTight:(m,d)=>`Vəziyyət gərgindir: ${d} tarixində cəmi £${m} qalacaq.`,
+       hDanger:(s,d)=>`${d} tarixində £${s} çatmayacaq.`,
+       sub:end=>`Proqnoz: ${end} qədər`,
+       tones:{gentle:"🤗 Yumşaq", direct:"💼 Birbaşa", aunty:"👵 Sərt xala"}}
+};
+
+const MSG = {
+  en: {
+    danger:{
+      gentle:(n,s,d,r)=>`Good morning ${n}, it's Penny. I've looked ahead for you. ${r} At this rate you'll be about £${s} short on ${d}. Don't worry, I have a plan, and it's only three small steps.`,
+      direct:(n,s,d,r)=>`${n}, quick update. You'll be £${s} short on ${d}. ${r} Here are three steps to fix it.`,
+      aunty:(n,s,d,r)=>`${n}! Sit down, we need to talk. You'll be £${s} short on ${d}! ${r} No more takeaways this week, okay? Auntie has a plan.`},
+    tight:{
+      gentle:(n,m,d)=>`Hi ${n}, it's Penny. You'll make it, but only just. On ${d} you'll have about £${m} left. A couple of small changes would give you breathing room.`,
+      direct:(n,m,d)=>`${n}, it's tight. Lowest point: £${m} on ${d}. A small change would help.`,
+      aunty:(n,m,d)=>`${n}, £${m} on ${d}? That's nothing! One surprise bill and you're in trouble. Let's fix it.`},
+    safe:{
+      gentle:(n,m,d,e)=>`Good news ${n}. You're safe until ${e}. Your lowest point is about £${m} on ${d}. Well done.`,
+      direct:(n,m,d,e)=>`${n}, you're safe until ${e}. Lowest point: £${m} on ${d}.`,
+      aunty:(n,m,d,e)=>`Look at you, ${n}! Safe all the way to ${e}. I'm proud of you. Don't get carried away.`},
+    reason:(label,amt,d)=>`The main reason is your ${label}, £${amt}, due on ${d}.`
+  },
+  az: {
+    danger:{
+      gentle:(n,s,d,r)=>`Sabahın xeyir, ${n}, mən Penny. Sənin üçün gələcəyə baxdım. ${r} Bu tempdə ${d} tarixində təxminən ${s} funt çatmayacaq. Narahat olma, planım var, cəmi üç kiçik addım.`,
+      direct:(n,s,d,r)=>`${n}, qısa xəbər: ${d} tarixində ${s} funt çatmayacaq. ${r} Bunu düzəltmək üçün üç addım var.`,
+      aunty:(n,s,d,r)=>`${n}! Otur, danışmalıyıq. ${d} tarixində ${s} funt çatmayacaq! ${r} Bu həftə çöldən yemək sifarişi yoxdur, oldu? Xalanın planı hazırdır.`},
+    tight:{
+      gentle:(n,m,d)=>`Salam, ${n}, mən Penny. Çatdıracaqsan, amma çətinliklə. ${d} tarixində cəmi ${m} funt qalacaq. Bir-iki kiçik dəyişiklik sənə rahatlıq verər.`,
+      direct:(n,m,d)=>`${n}, vəziyyət gərgindir. Ən aşağı nöqtə: ${d}, ${m} funt. Kiçik bir dəyişiklik kömək edər.`,
+      aunty:(n,m,d)=>`${n}, ${d} tarixində ${m} funt? Bu, heç nədir! Bir gözlənilməz hesab gəlsə, çətinə düşəcəksən. Gəl düzəldək.`},
+    safe:{
+      gentle:(n,m,d,e)=>`Yaxşı xəbər, ${n}. ${e} qədər təhlükəsizsən. Ən aşağı nöqtə ${d}, təxminən ${m} funt. Afərin.`,
+      direct:(n,m,d,e)=>`${n}, ${e} qədər təhlükəsizsən. Ən aşağı nöqtə: ${d}, ${m} funt.`,
+      aunty:(n,m,d,e)=>`Afərin sənə, ${n}! ${e} qədər hər şey qaydasındadır. Fəxr edirəm. Amma çox da şişmə.`},
+    reason:(label,amt,d)=>`Əsas səbəb: ${label}, ${amt} funt, ${d} tarixində.`
+  }
+};
+
+// ---------- STATE ----------
+let state = {persona:"student", lang:"en", tone:"gentle", done:new Set()};
+const today = new Date(); today.setHours(0,0,0,0);
+const fmtDate = (d, lang) => {
+  const dt = new Date(today); dt.setDate(dt.getDate()+d);
+  try { return dt.toLocaleDateString(lang==="az"?"az":"en-GB",{day:"numeric",month:"long"}); }
+  catch(e){ return dt.toLocaleDateString("en-GB",{day:"numeric",month:"long"}); }
+};
+
+function currentPlan(extraSpend=0){
+  const p = JSON.parse(JSON.stringify({...PERSONAS[state.persona], steps:undefined}));
+  PERSONAS[state.persona].steps.forEach((s,i)=>{ if(state.done.has(i)) s.mod(p); });
+  if(extraSpend) p.events.push({id:"extra-spend",day:1,amount:-extraSpend,en:"your plan",az:"planın"});
+  return p;
+}
+
+function forecast(p){
+  let bal = p.balance; const days=[bal];
+  for(let d=1; d<=p.horizon; d++){
+    bal -= p.daily;
+    p.events.filter(e=>e.day===d).forEach(e=>bal+=e.amount);
+    days.push(Math.round(bal));
+  }
+  let min = Infinity, minDay = 0, firstNeg = -1;
+  days.forEach((b,i)=>{ if(b<min){min=b;minDay=i} if(b<0 && firstNeg<0) firstNeg=i; });
+  return {days, min, minDay, firstNeg};
+}
+
+function statusOf(f){ return f.min<0 ? "danger" : f.min<50 ? "tight" : "safe"; }
+
+function biggestCost(p, beforeDay){
+  return p.events.filter(e=>e.amount<0 && e.day<=beforeDay).sort((a,b)=>a.amount-b.amount)[0];
+}
+
+function buildMessage(){
+  const L = state.lang, p = currentPlan(), f = forecast(p), st = statusOf(f), P = PERSONAS[state.persona];
+  const end = L==="az" ? P.endAz : P.endEn;
+  if(st==="danger"){
+    const s = Math.abs(f.min), d = fmtDate(f.firstNeg, L);
+    const big = biggestCost(p, f.firstNeg);
+    const r = big ? MSG[L].reason(big[L], Math.abs(big.amount), fmtDate(big.day, L)) : "";
+    return MSG[L].danger[state.tone](p.name, s, d, r);
+  }
+  if(st==="tight") return MSG[L].tight[state.tone](p.name, f.min, fmtDate(f.minDay, L));
+  return MSG[L].safe[state.tone](p.name, f.min, fmtDate(f.minDay, L), end);
+}
+
+// ---------- RENDER ----------
+function render(){
+  const L = state.lang, T = UI[L], P = PERSONAS[state.persona];
+  document.documentElement.lang = L;
+  ["who","msg","future","plan","talk"].forEach(k=>document.getElementById("t-"+k).textContent=T[k]);
+  document.getElementById("play").textContent = T.play;
+  document.getElementById("askBtn").textContent = T.ask;
+  document.getElementById("askInput").placeholder = T.ph;
+
+  document.getElementById("langs").innerHTML = [["en","English"],["az","Azərbaycanca"]]
+    .map(([k,v])=>`<button class="pill ${state.lang===k?"on":""}" data-lang="${k}">${v}</button>`).join("");
+  document.getElementById("personas").innerHTML = Object.entries(PERSONAS)
+    .map(([k,v])=>`<button class="pill ${state.persona===k?"on":""}" data-persona="${k}">${v[L]}</button>`).join("");
+  document.getElementById("tones").innerHTML = Object.entries(T.tones)
+    .map(([k,v])=>`<button class="pill ${state.tone===k?"on":""}" data-tone="${k}">${v}</button>`).join("");
+
+  const p = currentPlan(), f = forecast(p), st = statusOf(f);
+  const dot = document.getElementById("dot");
+  dot.style.background = st==="danger"?"var(--red)":st==="tight"?"var(--amber)":"var(--green)";
+  dot.textContent = T[st];
+  document.getElementById("headline").textContent =
+    st==="danger" ? T.hDanger(Math.abs(f.min), fmtDate(f.firstNeg,L)) :
+    st==="tight" ? T.hTight(f.min, fmtDate(f.minDay,L)) : T.hSafe(f.min, fmtDate(f.minDay,L));
+  document.getElementById("subline").textContent = T.sub(L==="az"?P.endAz:P.endEn);
+  document.getElementById("message").textContent = buildMessage();
+
+  document.getElementById("steps").innerHTML = P.steps.map((s,i)=>`
+    <div class="step ${state.done.has(i)?"done":""}" data-step="${i}">
+      <div class="check">${state.done.has(i)?"✓":""}</div>
+      <div><b>${s[L]}</b></div>
+      <div class="save">${s.saveEn}</div>
+    </div>`).join("");
+
+  drawChart(f);
+}
+
+function drawChart(f){
+  const c = document.getElementById("chart"), dpr = window.devicePixelRatio||1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w*dpr; c.height = h*dpr;
+  const g = c.getContext("2d"); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  const pad = {l:44,r:12,t:12,b:24};
+  const max = Math.max(...f.days, 50), min = Math.min(...f.days, 0);
+  const x = i => pad.l + (w-pad.l-pad.r)*i/(f.days.length-1);
+  const y = v => pad.t + (h-pad.t-pad.b)*(max-v)/(max-min||1);
+
+  g.font = "11px system-ui"; g.fillStyle = "#6b6b76";
+  g.fillText("£"+Math.round(max), 4, y(max)+4);
+  g.fillText("£0", 4, y(0)+4);
+  g.strokeStyle = "#d4cddd"; g.setLineDash([4,4]); g.beginPath(); g.moveTo(pad.l,y(0)); g.lineTo(w-pad.r,y(0)); g.stroke(); g.setLineDash([]);
+
+  const st = statusOf(f);
+  g.strokeStyle = st==="danger"?"#d93025":st==="tight"?"#e6a100":"#1f9d55";
+  g.lineWidth = 3; g.beginPath();
+  f.days.forEach((v,i)=> i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v)));
+  g.stroke();
+
+  [0, Math.floor((f.days.length-1)/2), f.days.length-1].forEach(i=>{
+    g.fillStyle="#6b6b76"; g.fillText(fmtDate(i,"en").replace(/ .*/,"")+" "+fmtDate(i,"en").split(" ")[1].slice(0,3), Math.min(x(i)-12, w-50), h-6);
+  });
+
+  if(f.firstNeg>=0){
+    g.fillStyle="#d93025"; g.beginPath(); g.arc(x(f.minDay), y(f.min), 7, 0, Math.PI*2); g.fill();
+    g.font="bold 12px system-ui"; g.fillText("−£"+Math.abs(f.min), Math.min(x(f.minDay)-20, w-60), y(f.min)-12);
+  }
+}
+
+// ---------- VOICE ----------
+let currentAudio = null;
+async function speak(text){
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  speechSynthesis.cancel();
+  const key = document.getElementById("elKey").value.trim();
+  const toneVoice = {direct:"elVoiceDirect", aunty:"elVoiceAunty"}[state.tone];
+  const voice = (toneVoice && document.getElementById(toneVoice).value.trim()) || document.getElementById("elVoice").value.trim();
+  const err = document.getElementById("elErr"); err.textContent = "";
+  if(key && voice){
+    try{
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`,{
+        method:"POST",
+        headers:{"xi-api-key":key,"Content-Type":"application/json","Accept":"audio/mpeg"},
+        body:JSON.stringify({text, model_id:"eleven_multilingual_v2"})
+      });
+      if(!r.ok) throw new Error("ElevenLabs error "+r.status);
+      currentAudio = new Audio(URL.createObjectURL(await r.blob()));
+      currentAudio.play(); return;
+    }catch(e){ err.textContent = e.message + " – using browser voice instead."; }
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = state.lang==="az" ? "az-AZ" : "en-GB"; u.rate = 0.98;
+  speechSynthesis.speak(u);
+}
+
+// ---------- TALK-BACK ----------
+function answer(q){
+  const L = state.lang;
+  const m = q.match(/(\d+(?:\.\d+)?)/);
+  if(!m) return L==="az" ? "Məbləği de, məsələn: 30 funt xərcləyə bilərəm?" : "Tell me an amount, like: can I spend £30?";
+  const x = Math.round(parseFloat(m[1]));
+  const f = forecast(currentPlan(x));
+  if(f.min >= 20){
+    const d = fmtDate(f.minDay,L);
+    return L==="az" ? `Bəli. ${x} funt xərcləsən, ən aşağı nöqtədə yenə ${f.min} funtun qalacaq (${d}). Problem yoxdur.`
+                    : `Yes. If you spend £${x}, your lowest point is still £${f.min} on ${d}. You'll be okay.`;
+  }
+  if(f.min >= 0){
+    const half = Math.round(x/2), d = fmtDate(f.minDay,L);
+    return L==="az" ? `Olar, amma çətin olacaq: ${d} tarixində cəmi ${f.min} funt qalacaq. Bəlkə ${half} funt xərcləyəsən?`
+                    : `You can, but it's tight: you'd have only £${f.min} left on ${d}. Maybe spend £${half} instead?`;
+  }
+  const alt = Math.max(0, x - Math.abs(f.min) - 10), d = fmtDate(f.firstNeg,L);
+  return L==="az" ? `Məsləhət görmürəm. ${x} funt xərcləsən, ${d} tarixində ${Math.abs(f.min)} funt çatmayacaq. ${alt>0?`${alt} funt necədir?`:"Bu həftə pulsuz bir plan quraq?"}`
+                  : `I wouldn't. Spending £${x} means you'd be £${Math.abs(f.min)} short on ${d}. ${alt>0?`How about £${alt} instead?`:"How about a free plan this week?"}`;
+}
+function ask(q){
+  const a = document.getElementById("answer");
+  const text = answer(q);
+  a.style.display="block"; a.textContent = text; speak(text);
+}
+
+// ---------- EVENTS ----------
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-lang],[data-persona],[data-tone],[data-step]");
+  if(!t) return;
+  if(t.dataset.lang){ state.lang=t.dataset.lang; }
+  if(t.dataset.persona){ state.persona=t.dataset.persona; state.done=new Set(); document.getElementById("answer").style.display="none"; }
+  if(t.dataset.tone){ state.tone=t.dataset.tone; }
+  if(t.dataset.step){ const i=+t.dataset.step; state.done.has(i)?state.done.delete(i):state.done.add(i); }
+  render();
+});
+document.getElementById("play").onclick = ()=>speak(buildMessage());
+document.getElementById("askBtn").onclick = ()=>ask(document.getElementById("askInput").value);
+document.getElementById("askInput").addEventListener("keydown", e=>{ if(e.key==="Enter") ask(e.target.value); });
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+document.getElementById("mic").onclick = ()=>{
+  if(!SR){ document.getElementById("askInput").focus(); return; }
+  const rec = new SR(); const mic = document.getElementById("mic");
+  rec.lang = state.lang==="az" ? "az-AZ" : "en-GB";
+  rec.onresult = ev=>{ const q = ev.results[0][0].transcript; document.getElementById("askInput").value=q; ask(q); };
+  rec.onend = ()=>mic.classList.remove("listening");
+  mic.classList.add("listening"); rec.start();
+};
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>
